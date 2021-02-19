@@ -35,6 +35,7 @@ from gettext import gettext as _
 #| Related third party imports
 #+---------------------------------------------------------------------------+
 import pcapy
+import scapy.all
 
 import impacket.ImpactDecoder as Decoders
 import impacket.ImpactPacket as Packets
@@ -153,6 +154,7 @@ class PCAPImporter(object):
         pcapy.DLT_PPP_SERIAL: "DLT_PPP_SERIAL",
         pcapy.DLT_C_HDLC: "DLT_C_HDLC",
         pcapy.DLT_IEEE802_11: "IEEE802_11",
+        scapy.data.DLT_IEEE802_11_RADIO: "DLT_IEEE802_11_RADIO",
         pcapy.DLT_NULL: "DLT_NULL",
         pcapy.DLT_RAW: "DLT_RAW",
         pcapy.DLT_EN10MB: "DLT_EN10MB",
@@ -201,7 +203,9 @@ class PCAPImporter(object):
             self._logger.debug("Unkown datalinks")
 
         if self.importLayer > 1 and self.datalink != pcapy.DLT_EN10MB and self.datalink != pcapy.DLT_LINUX_SLL \
-                and self.datalink != pcapy.DLT_RAW and self.datalink != PCAPImporter.PROTOCOL201:
+                and self.datalink != pcapy.DLT_RAW and self.datalink != PCAPImporter.PROTOCOL201 \
+                and self.datalink != pcapy.DLT_IEEE802_11 \
+                and self.datalink != scapy.data.DLT_IEEE802_11_RADIO:
             self._logger.debug('Datalink: ' + str(self.datalink))
             errorMessage = _("This pcap cannot be imported since the " +
                              "layer 2 is not supported ({0})").format(
@@ -348,6 +352,21 @@ class PCAPImporter(object):
             l2DstAddr = None
             l2Payload = payload
             etherType = 0x0800
+        elif self.datalink == pcapy.DLT_IEEE802_11:
+            packet = scapy.layers.dot11.Dot11(payload)
+            l2Proto = "802.11"
+            l2SrcAddr = packet.fields['addr2']
+            l2DstAddr = packet.fields['addr1']
+            l2Payload = packet.original
+            etherType = None
+        elif self.datalink == scapy.data.DLT_IEEE802_11_RADIO:
+            radiotap = scapy.layers.dot11.RadioTap(payload) # TODO add Radiotap info for enhanced PRE
+            packet = radiotap.payload.getlayer(scapy.layers.dot11.Dot11)
+            l2Proto = "802.11"
+            l2SrcAddr = packet.fields['addr2']
+            l2DstAddr = packet.fields['addr1']
+            l2Payload = packet.original
+            etherType = None
 
         return (l2Proto, l2SrcAddr, l2DstAddr, l2Payload, etherType)
 
