@@ -46,11 +46,82 @@ from netzob.Common.Utils.Decorators import typeCheck, NetzobLogger
 from netzob.Model.Vocabulary.Field import Field
 from netzob.Model.Vocabulary.Types.Raw import Raw
 from netzob.Model.Vocabulary.Domain.Variables.Nodes.Agg import Agg
+from netzob.Model.Vocabulary.Domain.Variables.Leafs.Size import Size
 
 
 @NetzobLogger
 class FieldOperations(object):
-    """This class offers various operations to support manual merge and split of fields."""
+    """This class offers various operations to support manual manipulation of fields."""
+
+    @typeCheck(Field, list)
+    def replaceField(self, field, domains):
+        """Replace specified field with fields based on provided domains. Provided domains can be
+        one or more or none (basically deleting the field).
+
+        >>> import binascii
+        >>> from netzob.all import *
+        >>> samples = ["00ff2f000000", "000010000000",	"00fe1f000000"]
+        >>> messages = [RawMessage(data=binascii.unhexlify(sample)) for sample in samples]
+        >>> f1 = Field(Raw(nbBytes=1), name="f1")
+        >>> f2 = Field(Raw(nbBytes=4), name="f2")
+        >>> f3 = Field(Raw(nbBytes=1), name="f3")
+        >>> symbol = Symbol([f1, f2, f3], messages=messages)
+        >>> symbol.addEncodingFunction(TypeEncodingFunction(HexaString))
+
+        >>> print(symbol)
+        f1   | f2         | f3  
+        ---- | ---------- | ----
+        '00' | 'ff2f0000' | '00'
+        '00' | '00100000' | '00'
+        '00' | 'fe1f0000' | '00'
+        ---- | ---------- | ----
+
+        >>> fo = FieldOperations()
+        >>> fo.replaceField(symbol.fields[1], [Raw(nbBytes=2), Raw(nbBytes=2))
+        >>> print(symbol)
+        f1   | Field  | Field  | f3  
+        ---- | ------ | ------ | ----
+        '00' | 'ff2f' | '0000' | '00'
+        '00' | '0010' | '0000' | '00'
+        '00' | 'fe1f' | '0000' | '00'
+        ---- | ------ | ------ | ----
+
+        :param field: the field to replace
+        :type field: :class:`Field`
+        :param domains: domains of new fields that shall replace the field
+        :type domains: :class:`list`
+
+        :raise Exception if something bad happens
+        """
+
+        if field is None:
+            raise TypeError("Fields cannot be None")
+
+        self._logger.debug("Replacing field {0} with new fields".format(field.name))
+
+        # retrieve index of specified field
+        iField = None
+        for i, f in enumerate(field.parent.fields):
+            if f == field:
+                iField = i
+                break
+
+        if iField is None:
+            raise ValueError(
+                "Cannot retrieve position of field in its parent fields")
+
+        # create new Fields based on provided domains
+        newFields = []
+        for domain in domains:
+            newFields.append(Field(domain=domain, name="Field"))
+
+        parent = field.parent
+        before = parent.fields[:iField]
+        after = parent.fields[iField+1:]
+        parent.fields = before + newFields + after
+
+        return newFields
+
 
     @typeCheck(Field)
     def deleteField(self, field):
