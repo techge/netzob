@@ -123,31 +123,6 @@ class FieldOperations(object):
         return newFields
 
 
-    @typeCheck(Field)
-    def deleteField(self, field):
-        """Delete a Field.
-        """
-        # FIXME description
-
-        if field is None:
-            raise TypeError("Field cannot be None")
-
-        iField = None
-        for i, f in enumerate(field.parent.fields):
-            if f == field:
-                iField = i
-                break
-
-        if iField is None:
-            raise ValueError(
-                "Cannot retrieve position of field in its parent fields")
-
-        parent = field.parent
-        before = parent.fields[:iField]
-        after = parent.fields[iField+1:]
-        parent.fields = before + after
-
-
     @typeCheck(Field, Field)
     def mergeFields(self, field1, field2):
         """Merge specified fields.
