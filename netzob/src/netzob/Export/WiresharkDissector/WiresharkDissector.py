@@ -91,7 +91,7 @@ class WiresharkDissector(object):
         def clean(s):
             # Respect wireshark syntax.
             # Allowed are lower characters, digits, '-', '_' and '.'
-            return re.sub("[^a-z\-_\.]", "_", str(s).lower())
+            return re.sub("[^a-z\-_\.0-9]", "_", str(s).lower())
         # sym = msg.getSymbol()
         msg = sym.messages[0]
         proto_name = clean(sym.name)
@@ -357,6 +357,25 @@ class WiresharkDissector(object):
         # Register dissector function to specific filter criterion
         filter_set = set()
         buf = LUACodeBuffer()
+
+        if symbols[0].messages[0].l2Protocol == "Radiotap":
+
+            buf << "radiotap_netzob = Proto(\"netzobradiotap\", \"Netzob generated Radiotap override\")\n"
+            buf << "radiotap_l = ProtoField.int16(\"radiotap.llength\", \"radiotap_length\", base.DEC)"
+            buf << "radiotap_netzob.fields = { radiotap_l }\n"
+            with buf.new_block("function radiotap_netzob.dissector(buffer, pinfo, tree)"):
+                buf << "length = buffer:len()"
+                buf << "if length == 0 then return end\n"
+                buf << "pinfo.cols.protocol = radiotap_netzob.name\n"
+                buf << "local radiot_len = buffer(2,2):le_uint()"
+                buf << "--tree:add(Dissector.get(\"radiotap\"):call(buffer(0,radiot_len):tvb(), pinfo, tree))"
+                buf << """local prototree = tree:add({}, buffer(radiot_len), "Netzob-generated Protocol")
+  prototree:add_le(radiotap_l, buffer(2,2))
+  {}.dissector(buffer(radiot_len):tvb(), pinfo, prototree)
+                   """.format(dissector_name, dissector_name)
+
+            dissector_name = "radiotap_netzob"
+
         #  For the case that the same address / port is used by multiple messages, the duplicates get filtered out
         for sym in symbols:
             filter_ = WiresharkFilterFactory.getFilter(sym)
@@ -365,10 +384,10 @@ class WiresharkDissector(object):
                 filter_set.add((str(expr[0]),str(expr[1]),str(luatype)))
         for exp_0,exp_1,type in filter_set:
             buf << """if not pcall(DissectorTable.get, "{exp_0}") then
-                      DissectorTable.new("{exp_0}", "Netzob-generated table", {type})
-                    end
-                    DissectorTable.get("{exp_0}"):add({exp_1}, {class_var})
-        """.format(exp_0=exp_0,exp_1=exp_1, type=type, class_var=dissector_name)
+  DissectorTable.new("{exp_0}", "Netzob-generated table", {type})
+end
+DissectorTable.get("{exp_0}"):add({exp_1}, {class_var})
+            """.format(exp_0=exp_0,exp_1=exp_1, type=type, class_var=dissector_name)
         return buf.getvalue()
 
     @typeCheck(AbstractField)
