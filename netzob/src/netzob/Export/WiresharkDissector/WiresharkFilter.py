@@ -92,6 +92,10 @@ class WiresharkL2Filter(WiresharkFilter):
         self.pytype = str
 
     def iterExpressions(self):
-        for msg in self.sym.messages:
-            for addr in [msg.l2SourceAddress, msg.l2DestinationAddress]:
-                yield ("{}.addr".format("eth"), '"{}"'.format(addr))
+        print(self.sym.messages[0].l2Protocol)
+        if self.sym.messages[0].l2Protocol == "Radiotap":
+            yield ("wtap_encap", "wtap.IEEE_802_11_RADIOTAP")
+        else:
+            for msg in self.sym.messages:
+                for addr in [msg.l2SourceAddress, msg.l2DestinationAddress]:
+                    yield ("{}.addr".format("eth"), '"{}"'.format(addr))
