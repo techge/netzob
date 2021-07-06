@@ -384,10 +384,10 @@ class WiresharkDissector(object):
                 filter_set.add((str(expr[0]),str(expr[1]),str(luatype)))
         for exp_0,exp_1,type in filter_set:
             buf << """if not pcall(DissectorTable.get, "{exp_0}") then
-                      DissectorTable.new("{exp_0}", "Netzob-generated table", {type})
-                    end
-                    DissectorTable.get("{exp_0}"):add({exp_1}, {class_var})
-        """.format(exp_0=exp_0,exp_1=exp_1, type=type, class_var=dissector_name)
+  DissectorTable.new("{exp_0}", "Netzob-generated table", {type})
+end
+DissectorTable.get("{exp_0}"):add({exp_1}, {class_var})
+            """.format(exp_0=exp_0,exp_1=exp_1, type=type, class_var=dissector_name)
         return buf.getvalue()
 
     @typeCheck(AbstractField)
