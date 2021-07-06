@@ -91,7 +91,7 @@ class WiresharkDissector(object):
         def clean(s):
             # Respect wireshark syntax.
             # Allowed are lower characters, digits, '-', '_' and '.'
-            return re.sub("[^a-z\-_\.]", "_", str(s).lower())
+            return re.sub("[^a-z\-_\.0-9]", "_", str(s).lower())
         # sym = msg.getSymbol()
         msg = sym.messages[0]
         proto_name = clean(sym.name)
