@@ -100,6 +100,8 @@ class Symbol(AbstractField):
         if messages is None:
             messages = []
         self.messages = messages
+        self.orig_messages = None
+        self.dedup_messages = None
         if fields is None:
             # create a default empty field
             fields = [Field()]
